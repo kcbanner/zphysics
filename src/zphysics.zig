@@ -110,8 +110,12 @@ fn initInterface(comptime T: type, comptime VTableT: type) *const VTableT {
             @compileError("vtable struct " ++ @typeName(VTableT) ++ " must be extern");
 
         var vtable: VTableT = undefined;
-        for (vtable_info.@"struct".fields) |field| {
-            const field_info = @typeInfo(field.type);
+        for (
+            vtable_info.@"struct".field_types,
+            vtable_info.@"struct".field_names,
+            vtable_info.@"struct".field_attrs,
+        ) |field_type, field_name, field_attrs| {
+            const field_info = @typeInfo(field_type);
 
             var is_opt = false;
             const opt_fn_info: ?std.builtin.Type.Fn = unbox: switch (field_info) {
@@ -126,24 +130,24 @@ fn initInterface(comptime T: type, comptime VTableT: type) *const VTableT {
 
             if (opt_fn_info) |fn_info| {
                 if (is_opt)
-                    @compileError("vtable function pointer " ++ field.name ++ " must be non-optional");
+                    @compileError("vtable function pointer " ++ field_name ++ " must be non-optional");
 
-                if (!fn_info.calling_convention.eql(std.builtin.CallingConvention.c))
-                    @compileError("vtable function pointer " ++ field.name ++ " must be callconv(.c)");
+                if (!fn_info.attrs.@"callconv".eql(std.builtin.CallingConvention.c))
+                    @compileError("vtable function pointer " ++ field_name ++ " must be callconv(.c)");
 
-                if (@hasDecl(T, field.name)) {
-                    @field(vtable, field.name) = &@field(T, field.name);
+                if (@hasDecl(T, field_name)) {
+                    @field(vtable, field_name) = &@field(T, field_name);
                 } else {
                     if (is_opt) {
-                        @field(vtable, field.name) = null;
+                        @field(vtable, field_name) = null;
                     } else {
-                        @compileError(@typeName(T) ++ " is missing `pub fn " ++ field.name ++ "`: " ++ @typeName(@TypeOf(@field(vtable, field.name))));
+                        @compileError(@typeName(T) ++ " is missing `pub fn " ++ field_name ++ "`: " ++ @typeName(@TypeOf(@field(vtable, field_name))));
                     }
                 }
             } else {
-                if (field.default_value_ptr) |default_value_ptr| {
-                    @field(vtable, field.name) = @as(*const field.type, @ptrCast(@alignCast(default_value_ptr))).*;
-                } else @compileError("non-pointer vtable field " ++ field.name ++ " must have a default value");
+                if (field_attrs.default_value_ptr) |default_value_ptr| {
+                    @field(vtable, field_name) = @as(*const field_type, @ptrCast(@alignCast(default_value_ptr))).*;
+                } else @compileError("non-pointer vtable field " ++ field_name ++ " must have a default value");
             }
         }
         break :blk vtable;
