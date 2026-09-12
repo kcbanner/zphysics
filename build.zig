@@ -25,7 +25,7 @@ pub fn build(b: *std.Build) void {
             bool,
             "enable_asserts",
             "Enable assertions",
-        ) orelse (optimize == .Debug),
+        ) orelse (optimize == .debug),
         .enable_cross_platform_determinism = b.option(
             bool,
             "enable_cross_platform_determinism",
